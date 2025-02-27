@@ -534,3 +534,116 @@ export const PersonalInfoForm = {
         element.appendChild(formContainer);
     },
 };
+
+export const WaitingAnimationExtension = {
+    name: 'WaitingAnimation',
+    type: 'response',
+    match: ({ trace }) =>
+      trace.type === 'ext_waitingAnimation' ||
+      trace.payload.name === 'ext_waitingAnimation',
+    render: async ({ trace, element }) => {
+      window.vf_done = true
+      await new Promise((resolve) => setTimeout(resolve, 250))
+  
+      const text = trace.payload?.text || 'I am searching for the best match...'
+      const delay = trace.payload?.delay || 3000
+  
+      const waitingContainer = document.createElement('div')
+      waitingContainer.innerHTML = `
+        <style>
+          .vfrc-message--extension-WaitingAnimation {
+            background-color: transparent !important;
+            background: none !important;
+          }
+          .waiting-animation-container {
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: 300;
+            color: #fffc;
+            display: flex;
+            align-items: center;
+          }
+          .waiting-text {
+            display: inline-block;
+            margin-left: 10px;
+          }
+          .waiting-letter {
+            display: inline-block;
+            animation: shine 1s linear infinite;
+          }
+          @keyframes shine {
+            0%, 100% { color: #fffc; }
+            50% { color: #000; }
+          }
+          .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #fffc;
+            border-top: 2px solid #000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+        <div class="waiting-animation-container">
+          <div class="spinner"></div>
+          <span class="waiting-text">${text
+            .split('')
+            .map((letter, index) =>
+              letter === ' '
+                ? ' '
+                : `<span class="waiting-letter" style="animation-delay: ${
+                    index * (1000 / text.length)
+                  }ms">${letter}</span>`
+            )
+            .join('')}</span>
+        </div>
+      `
+  
+      element.appendChild(waitingContainer)
+  
+      window.voiceflow.chat.interact({
+        type: 'continue',
+      })
+  
+      let intervalCleared = false
+      window.vf_done = false
+  
+      const checkDoneInterval = setInterval(() => {
+        if (window.vf_done) {
+          clearInterval(checkDoneInterval)
+          waitingContainer.style.display = 'none'
+          window.vf_done = false
+        }
+      }, 100)
+  
+      setTimeout(() => {
+        if (!intervalCleared) {
+          clearInterval(checkDoneInterval)
+          waitingContainer.style.display = 'none'
+        }
+      }, delay)
+    },
+  }
+  
+  // This extension triggers a "done" action,
+  // typically used to signal the completion of a task
+  // and hide a previous WaitingAnimation
+  export const DoneAnimationExtension = {
+    name: 'DoneAnimation',
+    type: 'response',
+    match: ({ trace }) =>
+      trace.type === 'ext_doneAnimation' ||
+      trace.payload.name === 'ext_doneAnimation',
+    render: async ({ trace, element }) => {
+      window.vf_done = true
+      await new Promise((resolve) => setTimeout(resolve, 250))
+  
+      window.voiceflow.chat.interact({
+        type: 'continue',
+      })
+    },
+  }
